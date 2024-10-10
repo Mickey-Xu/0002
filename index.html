@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Position Based on Nearest Element</title>
+    <style>
+       body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background-color: black;
+    color: white;
+}
+
+#app {
+    position: relative;
+    text-align: center;
+}
+
+.dialog {
+    display: none; /* Initially hidden */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    justify-content: center;
+    align-items: center;
+}
+
+.dialog.show {
+    display: flex; /* Show when the dialog is active */
+}
+
+.app-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 16px;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.camera-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    margin-top: 56px; /* Adjust for app bar height */
+}
+
+video {
+    width: 100%;
+    height: 100%;
+    display: block;
+    position: relative;
+    z-index: 1;
+}
+
+#photo {
+    max-width: 100%;
+    height: auto;
+    position: absolute;
+    top: 56px; /* Adjust for app bar height */
+    display: none;
+    z-index: 2;
+}
+
+.camera-frame {
+    position: absolute;
+    border: 1px dashed red;
+    z-index: 100;
+}
+
+#cameraFrameTop {
+    width: 30%;
+    height: 4%;
+    top: 40%;
+    left: 5%;
+    border-radius: 10%;
+}
+
+#cameraFrameSide {
+    width: 30%;
+    height: 70%;
+    top: 86px; /* Adjust to match video display */
+    right: 15%;
+    border-radius: 5%;
+}
+
+.controls {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-around;
+    padding: 16px;
+}
+
+.capture-btn-container {
+    border: 5px solid white;
+    border-radius: 50%;
+    padding: 2px;
+}
+
+button {
+    padding: 8px 16px;
+    font-size: 16px;
+    background-color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button:disabled {
+    background-color: gray;
+    cursor: not-allowed;
+}
+    </style>
+</head>
+<body>
+   <div id="app"></div>
+    <button id="openCameraBtn">拍照</button>
+
+    <div id="cameraDialog" class="dialog">
+        <div class="app-bar">
+            <button id="closeCameraBtn" class="close-btn">✖</button>
+        </div>
+        <div class="camera-container">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas" style="display: none;"></canvas>
+            <img id="photo" alt="Captured" style="display: none;"/>
+            <div id="cameraFrameTop" class="camera-frame"></div>
+            <div id="cameraFrameSide" class="camera-frame"></div>
+
+            <div class="controls">
+                <button id="retryBtn" disabled>重拍</button>
+                <div class="capture-btn-container">
+                    <button id="captureBtn">拍照</button>
+                </div>
+                <button id="usePhotoBtn" disabled>使用照片</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    const openCameraBtn = document.getElementById('openCameraBtn');
+const cameraDialog = document.getElementById('cameraDialog');
+const closeCameraBtn = document.getElementById('closeCameraBtn');
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const photo = document.getElementById('photo');
+const retryBtn = document.getElementById('retryBtn');
+const captureBtn = document.getElementById('captureBtn');
+const usePhotoBtn = document.getElementById('usePhotoBtn');
+
+let isCameraOn = false;
+
+openCameraBtn.addEventListener('click', () => {
+    cameraDialog.classList.add('show');
+    toggleCamera();
+});
+
+closeCameraBtn.addEventListener('click', closeCamera);
+retryBtn.addEventListener('click', retryPhoto);
+captureBtn.addEventListener('click', takePhoto);
+usePhotoBtn.addEventListener('click', usePhoto);
+
+async function toggleCamera() {
+    if (isCameraOn) {
+        closeCamera();
+    } else {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            isCameraOn = true;
+            retryBtn.disabled = true;
+            usePhotoBtn.disabled = true;
+        } catch (error) {
+            console.error('Error accessing the camera:', error);
+        }
+    }
+}
+
+function closeCamera() {
+    cameraDialog.classList.remove('show');
+    const stream = video.srcObject;
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
+    }
+    isCameraOn = false;
+    photo.style.display = 'none';
+}
+
+function retryPhoto() {
+    photo.style.display = 'none';
+    captureBtn.disabled = false;
+    retryBtn.disabled = true;
+    usePhotoBtn.disabled = true;
+    toggleCamera();
+}
+
+function takePhoto() {
+    const context = canvas.getContext('2d');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const base64Image = canvas.toDataURL('image/png');
+    photo.src = base64Image;
+    photo.style.display = 'block';
+    captureBtn.disabled = true;
+    retryBtn.disabled = false;
+    usePhotoBtn.disabled = false;
+
+    toggleCamera();
+}
+
+function usePhoto() {
+    console.log('Using photo:', photo.src);
+    closeCamera();
+    // Handle the photo data as needed here.
+}
+
+</script>
+</body>
+</html>
